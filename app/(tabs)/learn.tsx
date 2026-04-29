@@ -1,6 +1,6 @@
 
 import * as Speech from "expo-speech";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -36,7 +36,7 @@ const MODES: any = {
 const TOPICS = ["Fractions", "Water Cycle", "Photosynthesis", "Gravity", "Parts of Speech"];
 
 // ✅ GEMINI_KEY at the top, OUTSIDE everything
-const GEMINI_KEY = "AIzaSyB06Gl-snSexdUYFXMh_oIqfcsFBUjJEak";
+const GEMINI_KEY = "AIzaSyAX6EhAE0KjeExZqsgZFyuukqSTaLIk8rI";
 
 export default function LearnScreen() {
   const [mode, setMode] = useState("adhd");
@@ -59,7 +59,7 @@ export default function LearnScreen() {
     return () => clearInterval(timerRef.current);
   }, [mode, topic]);
 
-  const fetchLesson = async () => {
+  const fetchLesson = useCallback(async () => {
     setLoading(true);
     setLesson("");
     setCurrent(0);
@@ -98,11 +98,11 @@ export default function LearnScreen() {
 
       const data = await res.json();
       console.log("API Response:", data);
-      
+
       if (!data.candidates || !data.candidates[0]) {
         throw new Error("No response candidates from API");
       }
-      
+
       const text = data.candidates[0].content.parts[0].text;
       setLesson(text);
 
@@ -113,9 +113,9 @@ export default function LearnScreen() {
     }
 
     setLoading(false);
-  };
+  }, [mode, topic]);
 
-  useEffect(() => { fetchLesson(); }, [mode, topic]);
+  useEffect(() => { fetchLesson(); }, [fetchLesson]);
 
   const sentences = lesson
     ? lesson.match(/[^.!?]+[.!?]+/g)?.filter(Boolean) || []
@@ -261,7 +261,7 @@ export default function LearnScreen() {
               }}>
                 <View>
                   <Text style={{ color: m.accent, fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>
-                    Today's Lesson
+                    Today&apos;s Lesson
                   </Text>
                   <Text style={{ color: m.text, fontSize: 22, fontWeight: "700" }}>{topic}</Text>
                 </View>
@@ -366,7 +366,7 @@ export default function LearnScreen() {
                 borderWidth: 2, borderColor: "#c7d7ff"
               }}>
                 <Text style={{ color: m.accent, fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>
-                  TODAY'S LESSON
+                  TODAY&apos;S LESSON
                 </Text>
                 <Text style={{ color: m.text, fontSize: 18, fontWeight: "700" }}>📘 {topic}</Text>
                 <Text style={{ color: m.secondary, fontSize: 12, marginTop: 4 }}>

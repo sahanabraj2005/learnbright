@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 const MODES = {
   dyslexia: {
@@ -55,7 +55,7 @@ function DyslexiaLesson({ lesson, topic }) {
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
         <div>
-          <div style={{ color:m.accent, fontSize:"0.75rem", letterSpacing:"0.15em", textTransform:"uppercase", marginBottom:4 }}>Today's Lesson</div>
+          <div style={{ color:m.accent, fontSize:"0.75rem", letterSpacing:"0.15em", textTransform:"uppercase", marginBottom:4 }}>Today&apos;s Lesson</div>
           <div style={{ color:m.text, fontSize:"1.5rem", fontWeight:700 }}>{topic}</div>
         </div>
         <button onClick={() => speak(lesson)} style={{ background:speaking?m.accent:"transparent", border:`2px solid ${m.accent}`, borderRadius:12, padding:"10px 16px", color:speaking?"#fff":m.accent, cursor:"pointer", fontSize:"1rem", display:"flex", alignItems:"center", gap:6, transition:"all 0.2s" }}>
@@ -148,7 +148,7 @@ function AutismLesson({ lesson, topic }) {
   return (
     <div>
       <div style={{ background:"#e8f0ff", borderRadius:12, padding:"14px 18px", marginBottom:20, border:"2px solid #c7d7ff" }}>
-        <div style={{ color:m.accent, fontSize:"0.7rem", fontWeight:700, letterSpacing:"0.1em", marginBottom:4 }}>TODAY'S LESSON</div>
+        <div style={{ color:m.accent, fontSize:"0.7rem", fontWeight:700, letterSpacing:"0.1em", marginBottom:4 }}>TODAY&apos;S LESSON</div>
         <div style={{ color:m.text, fontSize:"1.2rem", fontWeight:700 }}>📘 {topic}</div>
         <div style={{ color:m.secondary, fontSize:"0.8rem", marginTop:4 }}>{steps.length} steps · Read each step · Check when done</div>
       </div>
@@ -196,7 +196,7 @@ export default function AdaptiveLessonScreen() {
   const [error, setError] = useState("");
   const m = MODES[mode];
 
-  const fetchLesson = async () => {
+  const fetchLesson = useCallback(async () => {
     setLoading(true); setLesson(""); setError("");
     const prompts = {
       dyslexia: `You are a teacher for a child with dyslexia, aged 9-12. Explain "${topic}" in 4-5 clear sentences. Use short, simple words. Avoid passive voice. No jargon. Respond with only the lesson text, no headings.`,
@@ -211,11 +211,11 @@ export default function AdaptiveLessonScreen() {
       });
       const data = await res.json();
       setLesson(data.content?.find(b=>b.type==="text")?.text || "");
-    } catch(e) { setError("Could not load lesson. Please try again."); }
+    } catch { setError("Could not load lesson. Please try again."); }
     setLoading(false);
-  };
+  }, [mode, topic]);
 
-  useEffect(() => { fetchLesson(); }, [mode, topic]);
+  useEffect(() => { fetchLesson(); }, [fetchLesson]);
 
   return (
     <div style={{ minHeight:"100vh", background:m.bg, fontFamily:"'DM Sans','Segoe UI',sans-serif", color:m.text, transition:"background 0.4s,color 0.4s" }}>

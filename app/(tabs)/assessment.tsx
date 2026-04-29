@@ -177,7 +177,6 @@ export default function AdaptiveAssessment() {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [history, setHistory] = useState<string[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [step, setStep] = useState(1);
 
   const handleAnswer = (option: any) => {
     const newScores = { ...scores };
@@ -193,7 +192,6 @@ export default function AdaptiveAssessment() {
     } else {
       setScores(newScores);
       setCurrentId(option.next);
-      setStep((s) => s + 1);
     }
   };
 
@@ -202,7 +200,6 @@ export default function AdaptiveAssessment() {
     const prev = history[history.length - 1];
     setHistory(history.slice(0, -1));
     setCurrentId(prev);
-    setStep((s) => s - 1);
   };
 
   const reset = () => {
@@ -210,7 +207,6 @@ export default function AdaptiveAssessment() {
     setScores({});
     setHistory([]);
     setProfile(null);
-    setStep(1);
   };
 
   // ── RESULT SCREEN ──

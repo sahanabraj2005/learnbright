@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, ScrollView,
   TouchableOpacity, ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -51,7 +50,7 @@ export default function TeacherDashboard() {
   const [insight, setInsight] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const fetchInsight = async (student: typeof mockStudents[0]) => {
+  const fetchInsight = useCallback(async (student: typeof mockStudents[0]) => {
     setIsGenerating(true);
     setInsight('');
     try {
@@ -61,15 +60,15 @@ export default function TeacherDashboard() {
       
       const result = await model.generateContent(prompt);
       setInsight(result.response.text().trim());
-    } catch (e) {
+    } catch {
       setInsight('Analyze student engagement patterns to identify peak focus windows.');
     }
     setIsGenerating(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchInsight(selectedStudent);
-  }, [selectedStudent.id]);
+  }, [selectedStudent, fetchInsight]);
 
   const profileColors: Record<string, string> = {
     ADHD: '#ef4444',
@@ -148,7 +147,7 @@ export default function TeacherDashboard() {
               {isGenerating ? (
                 <Text style={styles.loadingText}>Gemini is analyzing performance...</Text>
               ) : (
-                <Text style={styles.insightText}>"{insight}"</Text>
+                <Text style={styles.insightText}>&quot;{insight}&quot;</Text>
               )}
             </View>
           </View>
