@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Profile = "adhd" | "dyslexia" | "autism" | "balanced";
 
