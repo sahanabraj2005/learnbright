@@ -1,4 +1,3 @@
-
 import * as Speech from "expo-speech";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -6,39 +5,41 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View
+  View,
+  StyleSheet
 } from "react-native";
+import { useRole } from "@/context/RoleContext";
 
 const MODES: any = {
   dyslexia: {
     label: "Dyslexia Mode", emoji: "📖",
-    bg: "#1a1a2e", card: "#16213e", accent: "#e94560",
-    text: "#f5f0e8", secondary: "#a8a0c0", color: "#ff6b9d",
+    bg: "#ffffff", card: "#fdf4ff", accent: "#9333ea",
+    text: "#1e1b4b", secondary: "#6b7280", color: "#9333ea",
     fontSize: 18, lineHeight: 32,
-    description: "High contrast · Wide spacing · Audio",
+    description: "Wide spacing · High contrast · Audio",
   },
   adhd: {
     label: "ADHD Mode", emoji: "⚡",
-    bg: "#0d0d0d", card: "#111", accent: "#00ff88",
-    text: "#ffffff", secondary: "#888", color: "#00ff88",
+    bg: "#ffffff", card: "#f0fdf4", accent: "#16a34a",
+    text: "#0f172a", secondary: "#64748b", color: "#16a34a",
     fontSize: 15, lineHeight: 26,
     description: "Micro-lessons · XP points · Timer",
   },
   autism: {
     label: "Autism Spectrum", emoji: "🧩",
-    bg: "#f0f4ff", card: "#ffffff", accent: "#3b82f6",
+    bg: "#ffffff", card: "#ffffff", accent: "#3b82f6",
     text: "#1e293b", secondary: "#64748b", color: "#3b82f6",
     fontSize: 14, lineHeight: 24,
     description: "Structured steps · Predictable",
   },
 };
 
-const TOPICS = ["Fractions", "Water Cycle", "Photosynthesis", "Gravity", "Parts of Speech"];
+import { MOCK_LESSONS } from "@/constants/lessons";
 
-// ✅ GEMINI_KEY at the top, OUTSIDE everything
-const GEMINI_KEY = "AIzaSyAX6EhAE0KjeExZqsgZFyuukqSTaLIk8rI";
+const TOPICS = ["Fractions", "Water Cycle", "Photosynthesis", "Gravity", "Parts of Speech", "Solar System", "Ancient Egypt", "Human Heart"];
 
 export default function LearnScreen() {
+  const { role } = useRole();
   const [mode, setMode] = useState("adhd");
   const [topic, setTopic] = useState("Fractions");
   const [lesson, setLesson] = useState("");
@@ -48,6 +49,7 @@ export default function LearnScreen() {
   const [checked, setChecked] = useState<number[]>([]);
   const [highlighted, setHighlighted] = useState(-1);
   const [timer, setTimer] = useState(180);
+  const [speakerOn, setSpeakerOn] = useState(true);
   const timerRef = useRef<any>(null);
   const m = MODES[mode];
 
@@ -66,53 +68,12 @@ export default function LearnScreen() {
     setChecked([]);
     setHighlighted(-1);
 
-    let prompt = "Explain " + topic + " to a 10 year old in 5 simple sentences.";
-    if (mode === "dyslexia") {
-      prompt = "You are a teacher for a child with dyslexia aged 9-12. Explain " + topic + " in 4 short clear sentences. Simple words only. No jargon. Text only.";
-    } else if (mode === "adhd") {
-      prompt = "You are a teacher for ADHD child aged 9-12. Explain " + topic + " in exactly 5 punchy energetic sentences. Add one fun fact. Text only.";
-    } else if (mode === "autism") {
-      prompt = "You are a teacher for autistic child aged 9-12. Explain " + topic + " in 5 literal step-by-step sentences. No metaphors. Text only.";
-    }
-
-    const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + GEMINI_KEY;
-
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 800,
-          }
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        console.error("API Error Response:", err);
-        throw new Error(err.error?.message || "API error " + res.status);
-      }
-
-      const data = await res.json();
-      console.log("API Response:", data);
-
-      if (!data.candidates || !data.candidates[0]) {
-        throw new Error("No response candidates from API");
-      }
-
-      const text = data.candidates[0].content.parts[0].text;
-      setLesson(text);
-
-    } catch (e: any) {
-      console.error("Lesson fetch failed:", e);
-      const errorMessage = e.message || "Unknown error";
-      setLesson("Could not load lesson. " + errorMessage);
-    }
-
-    setLoading(false);
+    // Simulate API delay
+    setTimeout(() => {
+      const mockLesson = MOCK_LESSONS[topic]?.[mode] || "Lesson content coming soon!";
+      setLesson(mockLesson);
+      setLoading(false);
+    }, 800);
   }, [mode, topic]);
 
   useEffect(() => { fetchLesson(); }, [fetchLesson]);
@@ -124,40 +85,58 @@ export default function LearnScreen() {
   const fmt = (s: number) =>
     Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 
-  const speakText = (text: string) => Speech.speak(text, { rate: 0.85 });
+  const speakText = (text: string) => {
+    if (!speakerOn) return;
+    Speech.speak(text, { rate: 0.85 });
+  };
+
+  const toggleSpeaker = () => {
+    if (speakerOn) Speech.stop();
+    setSpeakerOn(prev => !prev);
+  };
+
+  if (role !== 'Student') {
+    return (
+      <View style={styles.deniedContainer}>
+        <Text style={styles.deniedEmoji}>🔒</Text>
+        <Text style={styles.deniedTitle}>Access Denied</Text>
+        <Text style={styles.deniedText}>The Learn module is exclusively for Students.</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: m.bg }}>
 
       {/* Header */}
       <View style={{
-        backgroundColor: mode === "autism" ? "#fff" : "#000",
-        padding: 16, paddingTop: 50,
+        backgroundColor: "#ffffff",
+        padding: 16, paddingTop: 60,
         flexDirection: "row", justifyContent: "space-between", alignItems: "center",
         borderBottomWidth: 1,
-        borderBottomColor: mode === "autism" ? "#e2e8f0" : "#222"
+        borderBottomColor: "#f1f5f9"
       }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <View style={{
-            width: 36, height: 36, backgroundColor: m.accent,
-            borderRadius: 10, alignItems: "center", justifyContent: "center"
+            width: 40, height: 40, backgroundColor: m.accent + "22",
+            borderRadius: 12, alignItems: "center", justifyContent: "center"
           }}>
-            <Text style={{ fontSize: 18 }}>🧠</Text>
+            <Text style={{ fontSize: 20 }}>🧠</Text>
           </View>
           <View>
-            <Text style={{ fontSize: 10, color: m.secondary, letterSpacing: 1 }}>
-              TEAM BYTE MESH · PS-26
+            <Text style={{ fontSize: 10, color: "#94a3b8", letterSpacing: 1 }}>
+              LEARNBRIGHT · AI COMPANION
             </Text>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: m.text }}>
-              LearnCompanion AI
+            <Text style={{ fontSize: 15, fontWeight: "800", color: "#0f172a" }}>
+              Learn & Explore
             </Text>
           </View>
         </View>
         <View style={{
-          backgroundColor: mode === "autism" ? "#f1f5f9" : "#1a1a1a",
-          borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5
+          backgroundColor: m.accent + "18",
+          borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6
         }}>
-          <Text style={{ fontSize: 12, color: m.secondary }}>
+          <Text style={{ fontSize: 12, color: m.accent, fontWeight: "600" }}>
             {m.emoji} {m.label}
           </Text>
         </View>
@@ -168,8 +147,9 @@ export default function LearnScreen() {
         {/* Mode Switcher */}
         <View style={{
           flexDirection: "row", gap: 6,
-          backgroundColor: mode === "autism" ? "#f1f5f9" : "#111",
-          borderRadius: 14, padding: 5, marginBottom: 18
+          backgroundColor: "#f8fafc",
+          borderRadius: 16, padding: 5, marginBottom: 18,
+          borderWidth: 1, borderColor: "#e2e8f0"
         }}>
           {Object.entries(MODES).map(([key, val]: any) => (
             <TouchableOpacity
@@ -177,13 +157,13 @@ export default function LearnScreen() {
               onPress={() => setMode(key)}
               style={{
                 flex: 1, alignItems: "center", paddingVertical: 8,
-                borderRadius: 10,
-                backgroundColor: mode === key ? val.color : "transparent"
+                borderRadius: 12,
+                backgroundColor: mode === key ? val.accent : "transparent"
               }}>
               <Text style={{ fontSize: 18 }}>{val.emoji}</Text>
               <Text style={{
                 fontSize: 11,
-                color: mode === key ? "#fff" : m.secondary,
+                color: mode === key ? "#fff" : "#64748b",
                 fontWeight: mode === key ? "700" : "400"
               }}>
                 {key === "dyslexia" ? "Dyslexia" : key === "adhd" ? "ADHD" : "Autism"}
@@ -206,15 +186,15 @@ export default function LearnScreen() {
                 key={t}
                 onPress={() => setTopic(t)}
                 style={{
-                  backgroundColor: topic === t ? m.accent : mode === "autism" ? "#f1f5f9" : "#1a1a1a",
+                  backgroundColor: topic === t ? m.accent : "#f1f5f9",
                   borderRadius: 99, paddingHorizontal: 14, paddingVertical: 7,
                   borderWidth: 1,
-                  borderColor: topic === t ? m.accent : mode === "autism" ? "#e2e8f0" : "#333"
+                  borderColor: topic === t ? m.accent : "#e2e8f0"
                 }}>
                 <Text style={{
-                  color: topic === t ? (mode === "adhd" ? "#000" : "#fff") : m.text,
+                  color: topic === t ? "#fff" : "#475569",
                   fontSize: 13,
-                  fontWeight: topic === t ? "700" : "400"
+                  fontWeight: topic === t ? "700" : "500"
                 }}>
                   {t}
                 </Text>
@@ -239,11 +219,16 @@ export default function LearnScreen() {
 
         {/* Lesson Card */}
         <View style={{
-          backgroundColor: mode === "autism" ? "#fff" : m.card,
+          backgroundColor: m.card,
           borderRadius: 18, padding: 18, minHeight: 250,
-          borderWidth: mode === "autism" ? 2 : 1,
-          borderColor: mode === "autism" ? "#e2e8f0" : "#222",
-          marginBottom: 12
+          borderWidth: 1,
+          borderColor: "#e2e8f0",
+          marginBottom: 12,
+          shadowColor: "#94a3b8",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 2,
         }}>
           {loading ? (
             <View style={{ alignItems: "center", paddingVertical: 40 }}>
@@ -265,13 +250,24 @@ export default function LearnScreen() {
                   </Text>
                   <Text style={{ color: m.text, fontSize: 22, fontWeight: "700" }}>{topic}</Text>
                 </View>
+                {/* Speaker Toggle */}
                 <TouchableOpacity
-                  onPress={() => speakText(lesson)}
+                  onPress={toggleSpeaker}
+                  activeOpacity={0.8}
                   style={{
-                    borderWidth: 2, borderColor: m.accent,
-                    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                    backgroundColor: speakerOn ? m.accent : "#f1f5f9",
+                    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9,
+                    borderWidth: 1.5,
+                    borderColor: speakerOn ? m.accent : "#e2e8f0",
                   }}>
-                  <Text style={{ color: m.accent, fontSize: 13 }}>🔊 Read</Text>
+                  <Text style={{ fontSize: 16 }}>{speakerOn ? "🔊" : "🔇"}</Text>
+                  <Text style={{
+                    color: speakerOn ? "#fff" : "#64748b",
+                    fontSize: 13, fontWeight: "700"
+                  }}>
+                    {speakerOn ? "ON" : "OFF"}
+                  </Text>
                 </TouchableOpacity>
               </View>
               <View style={{
@@ -280,45 +276,64 @@ export default function LearnScreen() {
                 borderRadius: 8, padding: 16
               }}>
                 {sentences.map((s, i) => (
-                  <TouchableOpacity key={i} onPress={() => { setHighlighted(i); speakText(s); }}>
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => { setHighlighted(i); speakText(s); }}
+                    activeOpacity={speakerOn ? 0.7 : 1}
+                  >
                     <Text style={{
                       fontSize: m.fontSize, lineHeight: m.lineHeight, color: m.text,
                       letterSpacing: 1,
-                      backgroundColor: highlighted === i ? "rgba(233,69,96,0.25)" : "transparent",
-                      borderRadius: 4, marginBottom: 6
+                      backgroundColor: highlighted === i ? m.accent + "28" : "transparent",
+                      borderRadius: 6, marginBottom: 8, padding: 4,
                     }}>
                       {s}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={{ color: m.secondary, fontSize: 12, textAlign: "center", marginTop: 10 }}>
-                👆 Tap any sentence to hear it
+              <Text style={{ color: speakerOn ? m.secondary : "#cbd5e1", fontSize: 12, textAlign: "center", marginTop: 10 }}>
+                {speakerOn ? "👆 Tap any sentence to hear it" : "🔇 Speaker is off — turn it on to listen"}
               </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  const currentIndex = TOPICS.indexOf(topic);
+                  const nextIndex = (currentIndex + 1) % TOPICS.length;
+                  setTopic(TOPICS[nextIndex]);
+                }}
+                style={{
+                  marginTop: 16,
+                  backgroundColor: m.accent, borderRadius: 10,
+                  padding: 12, alignItems: "center"
+                }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                  🏁 Finish & Learn Next Topic →
+                </Text>
+              </TouchableOpacity>
             </View>
 
           ) : mode === "adhd" ? (
             <View>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
-                <View style={{ flex: 1, backgroundColor: "#1a1a1a", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#2a2a2a" }}>
-                  <Text style={{ color: "#666", fontSize: 9 }}>⚡ XP</Text>
+                <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                  <Text style={{ color: "#16a34a", fontSize: 9, fontWeight: "700" }}>⚡ XP</Text>
                   <Text style={{ color: m.accent, fontSize: 18, fontWeight: "800" }}>{xp}</Text>
                 </View>
-                <View style={{ flex: 1, backgroundColor: "#1a1a1a", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#2a2a2a" }}>
-                  <Text style={{ color: "#666", fontSize: 9 }}>⏱ TIME</Text>
-                  <Text style={{ color: timer < 30 ? "#ff4444" : "#fff", fontSize: 18, fontWeight: "800" }}>
+                <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                  <Text style={{ color: "#16a34a", fontSize: 9, fontWeight: "700" }}>⏱ TIME</Text>
+                  <Text style={{ color: timer < 30 ? "#ef4444" : "#0f172a", fontSize: 18, fontWeight: "800" }}>
                     {fmt(timer)}
                   </Text>
                 </View>
-                <View style={{ flex: 1, backgroundColor: "#1a1a1a", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#2a2a2a" }}>
-                  <Text style={{ color: "#666", fontSize: 9 }}>📚 CHUNK</Text>
-                  <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>
+                <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                  <Text style={{ color: "#16a34a", fontSize: 9, fontWeight: "700" }}>📚 CHUNK</Text>
+                  <Text style={{ color: "#0f172a", fontSize: 18, fontWeight: "800" }}>
                     {current + 1}/{sentences.length}
                   </Text>
                 </View>
               </View>
 
-              <View style={{ backgroundColor: "#222", borderRadius: 99, height: 6, marginBottom: 14 }}>
+              <View style={{ backgroundColor: "#e2e8f0", borderRadius: 99, height: 6, marginBottom: 14 }}>
                 <View style={{
                   width: sentences.length > 0 ? `${((current + 1) / sentences.length * 100)}%` : "0%",
                   height: 6, backgroundColor: m.accent, borderRadius: 99
@@ -327,8 +342,10 @@ export default function LearnScreen() {
 
               {sentences[current] ? (
                 <View style={{
-                  backgroundColor: "#1a1a1a", borderRadius: 14, padding: 16, marginBottom: 12,
-                  borderWidth: 1, borderColor: checked.includes(current) ? m.accent : "#2a2a2a"
+                  backgroundColor: "#ffffff", borderRadius: 14, padding: 16, marginBottom: 12,
+                  borderWidth: 2, borderColor: checked.includes(current) ? m.accent : "#e2e8f0",
+                  shadowColor: "#94a3b8", shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
                 }}>
                   <Text style={{ fontSize: m.fontSize, lineHeight: m.lineHeight, color: m.text }}>
                     {sentences[current]}
@@ -336,26 +353,32 @@ export default function LearnScreen() {
                 </View>
               ) : null}
 
-              <Text style={{ color: "#666", fontSize: 12, marginBottom: 12 }}>
+              <Text style={{ color: m.secondary, fontSize: 12, marginBottom: 12, fontWeight: "600" }}>
                 {["🌟 Amazing!", "🔥 On a roll!", "💪 Keep going!", "✨ Level up!", "🚀 Star!"][current % 5]}
               </Text>
 
-              <TouchableOpacity
-                onPress={() => {
-                  if (!checked.includes(current)) {
-                    setChecked([...checked, current]);
-                    setXp(x => x + 25);
-                  }
-                  if (current < sentences.length - 1) setCurrent(c => c + 1);
-                }}
-                style={{
-                  backgroundColor: m.accent, borderRadius: 12,
-                  padding: 14, alignItems: "center"
-                }}>
-                <Text style={{ color: "#000", fontWeight: "800", fontSize: 14 }}>
-                  {current < sentences.length - 1 ? "Got it! Next →" : "🏆 Lesson Complete!"}
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (current < sentences.length - 1) {
+                      if (!checked.includes(current)) {
+                        setChecked([...checked, current]);
+                        setXp(x => x + 25);
+                      }
+                      setCurrent(c => c + 1);
+                    } else {
+                      const currentIndex = TOPICS.indexOf(topic);
+                      const nextIndex = (currentIndex + 1) % TOPICS.length;
+                      setTopic(TOPICS[nextIndex]);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: m.accent, borderRadius: 12,
+                    padding: 14, alignItems: "center"
+                  }}>
+                  <Text style={{ color: "#000", fontWeight: "800", fontSize: 14 }}>
+                    {current < sentences.length - 1 ? "Got it! Next →" : "🏆 Lesson Complete! Learn Next →"}
+                  </Text>
+                </TouchableOpacity>
             </View>
 
           ) : (
@@ -430,16 +453,22 @@ export default function LearnScreen() {
               })}
 
               {checked.length === sentences.length && sentences.length > 0 && (
-                <View style={{
-                  backgroundColor: "#f0fdf4", borderWidth: 2,
-                  borderColor: "#22c55e", borderRadius: 14,
-                  padding: 18, alignItems: "center", marginTop: 8
-                }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const currentIndex = TOPICS.indexOf(topic);
+                    const nextIndex = (currentIndex + 1) % TOPICS.length;
+                    setTopic(TOPICS[nextIndex]);
+                  }}
+                  style={{
+                    backgroundColor: "#f0fdf4", borderWidth: 2,
+                    borderColor: "#22c55e", borderRadius: 14,
+                    padding: 18, alignItems: "center", marginTop: 8
+                  }}>
                   <Text style={{ fontSize: 32 }}>🎉</Text>
                   <Text style={{ color: "#166534", fontWeight: "700", fontSize: 15 }}>
-                    Lesson Complete!
+                    Lesson Complete! Tap to learn next topic →
                   </Text>
-                </View>
+                </TouchableOpacity>
               )}
             </View>
           )}
@@ -449,14 +478,40 @@ export default function LearnScreen() {
         <TouchableOpacity
           onPress={fetchLesson}
           style={{
-            borderWidth: 1,
-            borderColor: mode === "autism" ? "#e2e8f0" : "#333",
-            borderRadius: 10, padding: 12, alignItems: "center"
+            borderWidth: 1.5,
+            borderColor: "#e2e8f0",
+            borderRadius: 14, padding: 14, alignItems: "center",
+            backgroundColor: "#f8fafc",
           }}>
-          <Text style={{ color: m.secondary, fontSize: 13 }}>🔄 Regenerate Lesson</Text>
+          <Text style={{ color: "#64748b", fontSize: 13, fontWeight: "600" }}>🔄 Regenerate Lesson</Text>
         </TouchableOpacity>
 
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  deniedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#fff',
+  },
+  deniedEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  deniedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  deniedText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+});

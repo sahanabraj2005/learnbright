@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import {
   View,
   Text,
@@ -10,15 +11,27 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { useRole } from "@/context/RoleContext";
+import StudentHome from "../(student)/index";
+import TeacherHome from "../(teacher)/index";
+import ParentHome from "../(parent)/index";
 
-export default function AuthScreen() {
-  const [isLogin, setIsLogin] = useState(false);
+export default function HomeScreen() {
+  const { role, setRole, setUserName, setUserEmail } = useRole();
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const router = useRouter();
 
+  // If role is set, show the role-specific dashboard
+  if (role === 'Student') return <StudentHome />;
+  if (role === 'Teacher') return <TeacherHome />;
+  if (role === 'Parent') return <ParentHome />;
+
+  // Default Auth Screen if no role/not logged in (though role-selection should handle this)
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -35,6 +48,14 @@ export default function AuthScreen() {
         </View>
 {/* Toggle Tabs */}
 <View style={styles.toggleContainer}>
+  <TouchableOpacity
+    style={[styles.toggleBtn, isLogin && styles.toggleActive]}
+    onPress={() => setIsLogin(true)}
+  >
+    <Text style={[styles.toggleText, isLogin && styles.toggleTextActive]}>
+      Login
+    </Text>
+  </TouchableOpacity>
   <TouchableOpacity
     style={[styles.toggleBtn, !isLogin && styles.toggleActive]}
     onPress={() => setIsLogin(false)}
@@ -111,7 +132,34 @@ export default function AuthScreen() {
           )}
 
           {/* Button */}
-          <TouchableOpacity style={styles.button}>
+          <TouchableOpacity 
+            style={styles.button}
+            onPress={() => {
+              if (!email || !password) {
+                alert("Please fill in email and password");
+                return;
+              }
+              if (!isLogin && !name.trim()) {
+                alert("Please enter your full name");
+                return;
+              }
+              // Save user details globally
+              const displayName = isLogin
+                ? email.split('@')[0]   // derive name from email on login
+                : name.trim();
+              setUserName(displayName);
+              setUserEmail(email.trim());
+              // Determine role from email
+              const mockEmail = email.toLowerCase();
+              if (mockEmail.includes('teacher')) {
+                setRole('Teacher');
+              } else if (mockEmail.includes('parent')) {
+                setRole('Parent');
+              } else {
+                setRole('Student');
+              }
+            }}
+          >
             <Text style={styles.buttonText}>
               {isLogin ? "Login 🚀" : "Create Account ✨"}
             </Text>

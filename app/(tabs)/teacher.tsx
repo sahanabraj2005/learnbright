@@ -4,10 +4,15 @@ import {
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { useRole } from "@/context/RoleContext";
+import { MOCK_INSIGHTS } from '@/constants/insights';
 
-// API Key - Using the one found in the project's other screens
-const genAI = new GoogleGenerativeAI('AIzaSyBLS15IzfiNW5m_Ua4JadV_8C9mLaOxuHI');
+const profileColors: Record<string, string> = {
+  ADHD: '#ef4444',
+  Dyslexia: '#f59e0b',
+  Autism: '#8b5cf6',
+  Balanced: '#10b981'
+};
 
 const mockStudents = [
   { 
@@ -43,9 +48,32 @@ const mockStudents = [
     strengths: ['Attention to detail', 'Logic'],
     struggling: ['Social cues in stories']
   },
+  { 
+    id: '4',
+    name: 'Maya', 
+    profile: 'Dyslexia', 
+    topic: 'Solar System',  
+    status: 'good',  
+    timeSpent: '40 mins', 
+    progress: 65,
+    strengths: ['Visual Memory', 'Curiosity'],
+    struggling: ['Spelling planet names']
+  },
+  { 
+    id: '5',
+    name: 'Leo', 
+    profile: 'ADHD', 
+    topic: 'Ancient Egypt',  
+    status: 'needs',  
+    timeSpent: '25 mins', 
+    progress: 30,
+    strengths: ['Enthusiasm', 'Fast Thinking'],
+    struggling: ['Sitting still', 'Dates']
+  },
 ];
 
 export default function TeacherDashboard() {
+  const { role } = useRole();
   const [selectedStudent, setSelectedStudent] = useState(mockStudents[0]);
   const [insight, setInsight] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -53,28 +81,28 @@ export default function TeacherDashboard() {
   const fetchInsight = useCallback(async (student: typeof mockStudents[0]) => {
     setIsGenerating(true);
     setInsight('');
-    try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const prompt = `Student Name: ${student.name}. Profile: ${student.profile}. Topic: ${student.topic}. Progress: ${student.progress}%. 
-      Provide a 2-sentence pedagogical insight and a specific recommendation for the teacher.`;
-      
-      const result = await model.generateContent(prompt);
-      setInsight(result.response.text().trim());
-    } catch {
-      setInsight('Analyze student engagement patterns to identify peak focus windows.');
-    }
-    setIsGenerating(false);
+    
+    // Simulate AI delay
+    setTimeout(() => {
+      const studentInsight = MOCK_INSIGHTS[student.name] || MOCK_INSIGHTS.Default;
+      setInsight(studentInsight);
+      setIsGenerating(false);
+    }, 1000);
   }, []);
 
   useEffect(() => {
     fetchInsight(selectedStudent);
   }, [selectedStudent, fetchInsight]);
 
-  const profileColors: Record<string, string> = {
-    ADHD: '#ef4444',
-    Dyslexia: '#f59e0b',
-    Autism: '#8b5cf6',
-  };
+  if (role !== 'Teacher' && role !== 'Parent') {
+    return (
+      <View style={styles.deniedContainer}>
+        <Text style={styles.deniedEmoji}>🔒</Text>
+        <Text style={styles.deniedTitle}>Access Denied</Text>
+        <Text style={styles.deniedText}>This dashboard is for Teachers and Parents only.</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -145,9 +173,9 @@ export default function TeacherDashboard() {
             </View>
             <View style={styles.insightBox}>
               {isGenerating ? (
-                <Text style={styles.loadingText}>Gemini is analyzing performance...</Text>
+                <Text style={styles.loadingText}>Analyzing performance...</Text>
               ) : (
-                <Text style={styles.insightText}>&quot;{insight}&quot;</Text>
+                <Text style={styles.insightText}>"{insight}"</Text>
               )}
             </View>
           </View>
@@ -180,7 +208,7 @@ export default function TeacherDashboard() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f8fafc' },
-  container: { padding: 20 },
+  container: { padding: 20, paddingTop: 70 },
   header: { marginBottom: 24 },
   title: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
   subtitle: { fontSize: 16, color: '#64748b', marginTop: 4 },
@@ -253,4 +281,26 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  deniedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#fff',
+  },
+  deniedEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  deniedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  deniedText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
 });

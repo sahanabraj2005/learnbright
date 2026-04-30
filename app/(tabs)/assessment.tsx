@@ -7,6 +7,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRole } from "@/context/RoleContext";
 
 type Profile = "adhd" | "dyslexia" | "autism" | "balanced";
 
@@ -173,6 +174,7 @@ const profileData: Record<Profile, any> = {
 };
 
 export default function AdaptiveAssessment() {
+  const { role } = useRole();
   const [currentId, setCurrentId] = useState("start");
   const [scores, setScores] = useState<Record<string, number>>({});
   const [history, setHistory] = useState<string[]>([]);
@@ -208,6 +210,16 @@ export default function AdaptiveAssessment() {
     setHistory([]);
     setProfile(null);
   };
+
+  if (role !== 'Student') {
+    return (
+      <View style={styles.deniedContainer}>
+        <Text style={styles.deniedEmoji}>🔒</Text>
+        <Text style={styles.deniedTitle}>Access Denied</Text>
+        <Text style={styles.deniedText}>The Assessment module is exclusively for Students.</Text>
+      </View>
+    );
+  }
 
   // ── RESULT SCREEN ──
   if (profile) {
@@ -328,4 +340,26 @@ const styles = StyleSheet.create({
   startBtnText: { color: "#fff", fontSize: 17, fontWeight: "bold" },
   retakeBtn: { padding: 12 },
   retakeText: { fontSize: 14, fontWeight: "600" },
+  deniedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#fff',
+  },
+  deniedEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  deniedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  deniedText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
 });
